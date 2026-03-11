@@ -32,3 +32,5 @@ venv/
 *.ps
 *.pdf
 *-SAVE-ERROR
+
+!thesis_ctfov_cold_diffusion/thesis_main.pdf

@@ -1,0 +1,104 @@
+\chapter{Related Work}
+\label{ch:related_work}
+
+This chapter reviews existing approaches to \gls{ct} truncation correction and positions our work within the broader context of deep learning for medical imaging and diffusion-based generative models.
+
+\section{Classical Truncation Correction Methods}
+
+\subsection{Extrapolation-Based Methods}
+
+Early approaches to truncation correction focus on extrapolating the missing sinogram data using prior knowledge or assumptions~\cite{ohnesorge2000efficient}.
+
+\paragraph{Water Cylinder Extrapolation} One of the simplest methods assumes the patient can be approximated by a water-equivalent cylinder~\cite{ohnesorge2000efficient}. The missing data is filled with projection values corresponding to a circular water phantom. While computationally efficient, this method fails when significant bony or high-density structures extend beyond the \gls{fov}.
+
+\paragraph{Polynomial Fitting} Some methods fit polynomial functions to the known projection data near the truncation boundary and extrapolate smoothly~\cite{sourbelle2005reconstruction}. The extrapolated values aim to ensure smooth transitions and reduce streak artifacts. However, polynomial extrapolation cannot capture the complex anatomical structures in truncated regions.
+
+\paragraph{Mirror Extrapolation} Assuming approximate bilateral symmetry, one approach mirrors the available data across the central axis. This works reasonably well for symmetric anatomical regions like the abdomen but fails for asymmetric cases.
+
+\subsection{Iterative Reconstruction Methods}
+
+Iterative methods aim to find a consistent solution that satisfies the measured projection data within the \gls{fov} while imposing regularization on the truncated regions~\cite{kudo1991tomographic}.
+
+\paragraph{Total Variation (TV) Regularization} Minimize the image total variation subject to data fidelity:
+%
+\begin{equation}
+\hat{\mu} = \arg\min_{\mu} \|\mathcal{R}\{\mu\}|_{\Omega} - p_{\text{measured}}\|_2^2 + \lambda \text{TV}(\mu)
+\end{equation}
+%
+where $\mathcal{R}\{\mu\}|_{\Omega}$ denotes the Radon transform restricted to the measured \gls{fov}. TV regularization encourages piecewise smooth solutions but may over-smooth fine details.
+
+\paragraph{Data Consistency Methods} Enforce consistency between forward projection and measured data iteratively~\cite{kudo1991tomographic}. These methods alternate between image domain updates (applying constraints or priors) and sinogram domain corrections (enforcing measured values). While effective, they are computationally expensive and sensitive to initialization.
+
+\subsection{Limitations of Classical Methods}
+
+Classical methods suffer from several significant limitations. They rely on strong assumptions such as simplified physical models (water equivalency, anatomical symmetry) that rarely hold in practice for real patient data. These approaches demonstrate limited adaptability because they cannot learn from data or adapt to different anatomical regions and patient variability. Furthermore, iterative methods impose substantial computational cost by requiring many forward and backward projection operations, making them impractical for time-sensitive clinical workflows. Finally, classical methods often produce suboptimal results with residual artifacts that remain visible in the reconstructed images.
+
+\section{Deep Learning for Medical Image Reconstruction}
+
+\subsection{CNN-Based Image Restoration}
+
+The success of \glspl{cnn} in computer vision has inspired numerous applications in medical imaging~\cite{wang2016deep}.
+
+\paragraph{U-Net Architecture} The U-Net~\cite{ronneberger2015unet}, originally designed for biomedical image segmentation, has become a canonical architecture for image-to-image translation tasks. Its encoder-decoder structure with skip connections preserves fine details while capturing global context. U-Net has been successfully applied to various medical image restoration tasks, including denoising, super-resolution, and artifact reduction.
+
+\paragraph{Residual Learning} Residual networks~\cite{he2016deep} enable training very deep networks by learning residual mappings. In the context of artifact correction, the network learns to predict the artifact component, which is then subtracted from the input. This formulation often converges faster and achieves better results than direct clean image prediction.
+
+\subsection{Deep Learning for CT Reconstruction}
+
+Several works have explored deep learning specifically for \gls{ct} reconstruction~\cite{jin2017deep, wurfl2016deep}.
+
+\paragraph{Learned Iterative Reconstruction} Unrolls iterative reconstruction algorithms into a fixed number of steps and makes the regularization or update operators learnable. This combines the interpretability of model-based methods with the expressiveness of neural networks.
+
+\paragraph{Sinogram Domain Processing} Some approaches operate directly on sinograms rather than reconstructed images~\cite{jin2017deep}. This avoids the information loss and non-linearity introduced by \gls{fbp}, potentially enabling better artifact correction. However, sinogram-based networks must handle the unique geometric properties of projection data. CT-SDM uses diffusion modeling for sparse-view CT reconstruction across sampling rates, highlighting the feasibility of diffusion models directly in CT reconstruction pipelines~\cite{yang2025ctsdm}.
+
+\paragraph{Hybrid Methods} Combine neural networks with traditional reconstruction algorithms. For example, a \gls{cnn} may refine the initial \gls{fbp} reconstruction or provide prior information to iterative methods. These approaches balance reconstruction speed with image quality.
+
+\subsection{Inpainting Networks for Truncation}
+
+Image inpainting methods aim to fill missing regions based on surrounding context. Several works have adapted inpainting networks to \gls{ct} truncation using techniques such as partial convolution with masked convolutions that operate only on valid (non-truncated) regions and propagate information inward, coarse-to-fine refinement strategies that first generate a rough completion and then refine it with additional network passes, and conditional generation approaches using conditional \glspl{gan} or \glspl{vae} to generate plausible content for truncated regions. While these methods can produce visually plausible results, they often lack physical consistency and may introduce hallucinated anatomical structures not present in the actual patient.
+
+\section{Generative Models for Medical Imaging}
+
+\subsection{Generative Adversarial Networks (GANs)}
+
+\glspl{gan}~\cite{goodfellow2014generative} train a generator and discriminator in an adversarial manner. \glspl{gan} have been applied to various medical imaging tasks including data augmentation for generating synthetic training samples, image synthesis for creating realistic medical images from noise or other imaging modalities, and artifact removal where discriminators provide adversarial loss signals to encourage artifact-free outputs. However, \glspl{gan} are notoriously difficult to train, prone to mode collapse where the generator produces limited variety, and can generate unrealistic hallucinations, which is particularly problematic for clinical applications where diagnostic accuracy is paramount.
+
+\subsection{Variational Autoencoders (VAEs)}
+
+\glspl{vae}~\cite{kingma2013auto} learn a compressed latent representation of data by maximizing a variational lower bound on the data likelihood. \glspl{vae} provide probabilistic modeling with uncertainty quantification, smooth latent spaces enabling meaningful interpolation between samples, and stable training dynamics compared to \glspl{gan}. Conditional \glspl{vae} can be used for image translation tasks, including artifact correction. However, \gls{vae}-generated images tend to be blurry due to the pixel-wise reconstruction loss that encourages averaging behavior.
+
+\section{Diffusion Models}
+
+\subsection{Denoising Diffusion Probabilistic Models}
+
+\gls{ddpm}~\cite{ho2020denoising} has achieved state-of-the-art results in image generation, surpassing \glspl{gan} in sample quality and diversity. Key advantages include stable training without adversarial dynamics or mode collapse issues, high sample quality that captures fine details and diverse modes of the data distribution, and strong theoretical foundations grounded in score-based modeling and stochastic differential equations~\cite{song2021scorebased}.
+
+\subsection{Accelerated Sampling}
+
+A major limitation of \gls{ddpm} is slow sampling due to the need for many diffusion steps (typically 1000). Several works address this through deterministic sampling methods like DDIM~\cite{song2020denoising} that reparameterize the generative process to enable faster sampling with fewer steps, learned samplers that train additional networks to predict optimal sampling trajectories, and progressive distillation techniques that iteratively distill a multi-step diffusion model into fewer steps.
+
+\subsection{Diffusion Models in Medical Imaging}
+
+Recent works have started applying diffusion models to medical imaging tasks~\cite{khader2022medical, song2022solving}, including 3D medical image synthesis for generating realistic CT/MRI volumes for data augmentation, inverse problems using score-based models as priors for reconstruction, super-resolution, and denoising~\cite{song2022solving}, and conditional generation for translating between imaging modalities such as generating CT from MRI. Conditional diffusion has also been applied to radiograph generation, for example segmentation-guided knee radiograph synthesis~\cite{mei2024segmentation}. In compressed sensing, invertible diffusion models introduce an explicit invertibility constraint to support end-to-end reconstruction and downstream optimization~\cite{chen2025idm}. Most of these methods use stochastic noise-based degradation, which is not aligned with the deterministic nature of \gls{ct} truncation.
+
+\section{Cold Diffusion}
+
+\subsection{Concept and Motivation}
+
+Cold Diffusion~\cite{bansal2022cold} generalizes \gls{ddpm} by replacing Gaussian noise with arbitrary deterministic degradations. The authors demonstrate successful image restoration for various degradation types including Gaussian blur through progressively blurring images, masking by gradually masking image regions, pixel shuffling via randomly permuting pixel positions, and JPEG compression by applying increasing compression levels. The key insight is that the iterative refinement mechanism of diffusion models does not inherently require stochastic noise. Deterministic transformations can be equally effective as long as the network learns to reverse them.
+
+\subsection{Advantages Over Standard DDPM}
+
+For restoration tasks, Cold Diffusion offers several compelling advantages. It enables task-specific degradation modeling by directly modeling the actual degradation process (such as masking for truncation) rather than using a proxy like Gaussian noise. In many restoration settings, the degraded state already carries strong structural context, while practical implementations can still include auxiliary conditioning such as timestep information. It provides improved interpretability because each timestep has a clear physical meaning tied to the degradation level. Finally, it offers computational efficiency since for certain degradations (particularly masking), the forward and reverse processes are computationally simpler than noise addition and prediction operations.
+
+\subsection{Applications}
+
+While Cold Diffusion has been demonstrated on natural images, recent studies have also explored deterministic or cold-diffusion-style designs in medical imaging tasks such as low-dose CT denoising and MRI reconstruction. In contrast, application to \gls{ct} field-of-view extension in the sinogram domain remains limited and has not yet been widely established as a standardized setting. This thesis adapts Cold Diffusion to the sinogram domain and evaluates it on public \gls{ct} datasets, with results reported in Chapter~\ref{ch:results}.
+
+\section{Positioning of This Work}
+
+Our work bridges several research areas by addressing \gls{ct} truncation correction, a longstanding problem in medical imaging, with a novel deep learning approach. We emphasize sinogram domain processing, working directly in the projection domain rather than on reconstructed images as most deep learning CT methods do. We apply Cold Diffusion to medical imaging by adapting it specifically for \gls{ct} field-of-view extension in the projection domain. Finally, we employ deterministic degradation modeling through a physics-inspired masking operator that directly models the truncation mechanism, providing better alignment with the problem structure than noise-based diffusion approaches.
+
+\section{Summary}
+
+This chapter reviewed classical truncation correction methods and their inherent limitations, deep learning approaches for medical image reconstruction and artifact reduction, generative models including \glspl{gan}, \glspl{vae}, and diffusion models for medical imaging applications, and the Cold Diffusion framework with its potential for restoration tasks. The present work positions a physics-informed Cold Diffusion formulation for \gls{ct} field-of-view extension in the sinogram domain, combining iterative refinement with task-specific deterministic degradation modeling.

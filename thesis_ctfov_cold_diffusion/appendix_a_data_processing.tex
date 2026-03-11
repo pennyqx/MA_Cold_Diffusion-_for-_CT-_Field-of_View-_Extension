@@ -1,0 +1,99 @@
+\chapter{Data Processing Details}
+\label{app:data_processing}
+
+This appendix provides detailed specifications for data preprocessing and sinogram generation.
+
+\section{CT Volume Loading Procedures}
+
+\subsection{NIfTI Format Loading (CT-ORG)}
+
+CT-ORG volumes are loaded from NIfTI files and converted to the medical convention $(Z, Y, X)$. Voxel spacing is extracted from the header, and volumes are resampled to the fixed target spacing used by the projection pipeline.
+
+\subsection{DICOM Format Loading (LIDC-IDRI)}
+
+LIDC-IDRI scans are loaded from DICOM slices, sorted by \texttt{ImagePositionPatient} along the z-axis, and stacked into $(Z, Y, X)$ volumes. Rescale slope/intercept are applied to convert pixel values to Hounsfield Units before any projection operations. Slice spacing and in-plane resolution are recorded from DICOM metadata.
+
+\section{PyRoNN Forward Projection}
+
+\subsection{Cone-beam Forward Projection (3D)}
+
+Forward projection uses a cone-beam geometry implemented in the preprocessing pipeline. Volumes are projected to 3D sinograms of shape $(n_{proj}, W, H)$ using the configured detector spacing, source--detector distance, and source--isocenter distance. Training then operates on 2D slices extracted along the detector height dimension ($v$ rows).
+
+\subsection{Important Notes}
+
+\begin{itemize}
+    \item PyRoNN uses GPU acceleration via CUDA and is wrapped in PyTorch in this project
+    \item \texttt{swap\_detector\_axis=True} is used to align PyRoNN's internal $(H, W)$ detector ordering with our $(W, H)$ convention
+\end{itemize}
+
+\section{Normalization Statistics}
+
+Normalization statistics (mean and standard deviation) are computed on the training split and cached in the preprocessing outputs. These values depend on the dataset composition and preprocessing settings, and are therefore reported from the cached statistics rather than hard-coded here.
+
+\section{Data Augmentation}
+
+No augmentation is enabled in the current training pipeline. Augmentation strategies are
+documented as potential future work but are not applied in the reported experiments.
+
+\section{Dataset Organization}
+
+\subsection{Processed Data Organization}
+
+\begin{verbatim}
+processed_data/
++-- dataset_A/
+|   +-- sinogram_slices/
+|   +-- metadata
++-- dataset_B/
+|   +-- sinogram_slices/
+|   +-- metadata
++-- split_lists/
++-- normalization_statistics
+\end{verbatim}
+
+\subsection{Metadata Format}
+
+\begin{verbatim}
+{
+  "case_id": {
+    "original_shape": [128, 512, 512],
+    "original_spacing": [1.5, 0.97, 0.97],
+    "num_slices_processed": 120,
+    "sinogram_shape": [360, 640],
+    "dataset": "dataset_A"
+  },
+  ...
+}
+\end{verbatim}
+
+In filenames and metadata, the \texttt{slice\#\#\#\#} index refers to the detector-row
+index $v$ used to extract $x(\theta, u)$ from the 3D cone-beam sinogram (not an
+axial $Z$ slice from the original volume).
+
+\section{Quality Control Checks}
+
+\subsection{Sinogram Validation Criteria}
+
+\begin{enumerate}
+    \item \textbf{Shape check}: All sinograms must be $360 \times 640$ (2D) or $360 \times 640 \times 560$ (3D)
+    \item \textbf{NaN/Inf check}: No invalid floating-point values
+    \item \textbf{Statistics check}: Min/max/mean/std are summarized across the dataset
+    \item \textbf{Range warnings}: Values outside a configured range are flagged for review
+\end{enumerate}
+
+\subsection{Automated Validation}
+
+\begin{verbatim}
+Validation is executed in three modes:
+1) summary mode for full-dataset statistics
+2) quick mode for fast integrity checks
+3) report mode with optional visual diagnostics
+\end{verbatim}
+
+Output includes:
+\begin{itemize}
+    \item Number of files validated
+    \item Number of files with issues
+    \item Distribution of sinogram statistics (mean, std, min, max)
+    \item List of problematic files for manual review
+\end{itemize}

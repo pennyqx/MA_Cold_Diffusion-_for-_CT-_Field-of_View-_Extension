@@ -1,0 +1,180 @@
+% Document class for LME theses: lmedoc
+% Master's Thesis (English)
+\documentclass[english,mt]{lmedoc/lmedoc}
+
+%%%%%%%%%%%%%%%%%%
+% pdflatex and lualatex are supported
+% ++ "Umlaut" support
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[utf8]{inputenc}
+  \usepackage[T1]{fontenc}
+  \usepackage{lmodern}
+\else
+  \ifXeTeX
+     \usepackage{fontspec}
+  \else 
+     \usepackage{luatextra}
+  \fi
+\fi
+
+% Load additional packages
+\usepackage{lmedoc/packages}
+% Additional packages for this thesis
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{amsmath}
+\usepackage{amssymb}
+% subcaption already loaded by lmedoc/packages.sty
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{tikz}
+\usetikzlibrary{patterns}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+% put in this file your abbreviations
+\input{abbreviations.tex}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% supress messages because of underful hbox/vbox, this is not a problem
+\hbadness=10000
+\vbadness=10000
+\raggedbottom
+
+% some useful commands
+\makeatletter % let's define a single dot
+\DeclareRobustCommand\onedot{\futurelet\@let@token\@onedot}
+\newcommand{\@onedot}{\ifx\@let@token.\else.\null\fi\xspace}
+\makeatother
+
+% Sets the bib file
+\addbibresource{literature.bib}
+
+\pagenumbering{roman}
+
+\begin{document}
+
+% Cover page for Master's thesis
+\begin{deckblatt}
+  \Titel{Cold Diffusion for CT Field-of-View Extension} % Title
+  \Name{Qianxin} % Last name
+  \Vorname{Wang} % Given name
+  \Geburtsort{Anhui} % Place of birth
+  \Geburtsdatum{02.05.1998} % Date of birth
+  \Betreuer{Prof. Dr.-Ing. Andreas Maier, Yipeng Sun} % Advisor
+  \Start{12.09.2025} % Start of thesis
+  \Ende{12.03.2026} % End of thesis
+  %\ZweitInstitut{} % Optional: Cooperation partner
+\end{deckblatt}
+
+\cleardoublepage
+
+% Declaration (required for thesis)
+I hereby declare that this thesis is entirely my own work and that I have used
+no sources or aids other than those stated. All passages that have been taken
+verbatim or essentially from published or unpublished sources have been marked
+as such. The thesis has not been submitted, either in the same or a similar form,
+to any other examination board.
+
+\vspace{2cm}
+
+\noindent
+\rule{0.45\textwidth}{0.4pt} \hfill \rule{0.45\textwidth}{0.4pt}\\
+\noindent
+\textit{Place, Date} \hfill \textit{Signature}
+
+\cleardoublepage
+
+% Abstract in English
+\begin{center}
+\bfseries
+{\selectlanguage{english}Abstract}
+\normalfont
+\end{center}
+
+\vspace{0.5cm}
+
+Computed Tomography (CT) truncation artifacts occur when parts of the anatomy extend
+beyond the scanner field-of-view, producing incomplete projection data (sinograms) and
+artifacted reconstructions. This thesis investigates CT field-of-view extension in the
+projection domain and treats the problem as recovery of missing sinogram regions under
+controlled bilateral truncation. The proposed method adapts \textit{Cold Diffusion} to
+this setting by replacing stochastic noising with deterministic masking that follows the
+truncation process~\cite{bansal2022cold}. A time-conditioned U-Net predicts clean
+sinograms from progressively truncated inputs, and reverse sampling is performed with
+mask-guided updates together with hard replacement in observed regions to preserve
+measured projection values.
+
+Experiments are conducted on two public CT datasets, CT-ORG and LIDC-IDRI, to include
+both abdominal and thoracic anatomy~\cite{rister2020ctorg,armato2011lung}. The study
+uses a unified preprocessing and evaluation protocol and reports both sinogram-domain and
+reconstruction-domain metrics. Baseline comparisons include truncated input, WCE-only
+extrapolation, U-Net inpainting, conditional DDPM, and Cold Diffusion under matched
+conditions. In the main baseline setting at \(k_c=320\) (50\% of detector columns truncated), U-Net inpainting achieves the
+best quantitative performance, while Cold Diffusion remains consistently stronger than
+conditional DDPM. A dedicated timestep study further shows that reverse-step budget
+substantially influences reconstruction quality.
+
+The results indicate that Cold Diffusion is a feasible projection-domain approach for CT
+field-of-view extension and provides meaningful improvements over the Gaussian-noise
+diffusion baseline in this setup. At the same time, performance remains sensitive to
+sampling configuration and does not surpass the strongest single-step baseline under the
+current protocol. These findings position the work as a practical and evidence-based
+step toward diffusion-based projection restoration, with further validation needed for
+broader truncation patterns and clinical deployment scenarios.
+
+\textbf{Keywords:} Computed Tomography, Field-of-View Extension, Truncation Artifacts,
+Cold Diffusion, Medical Image Processing, Sinogram Restoration
+
+\cleardoublepage
+
+\tableofcontents
+
+\cleardoublepage 
+\pagenumbering{arabic}
+
+\include{introduction}
+\cleardoublepage
+\include{background}
+\cleardoublepage
+\include{related_work}
+\cleardoublepage
+\include{methodology}
+\cleardoublepage
+\include{experiments}
+\cleardoublepage
+\include{results}
+\cleardoublepage
+\include{discussion}
+\cleardoublepage
+\include{conclusion}
+\cleardoublepage
+
+\appendix
+\cleardoublepage
+\include{appendix_a_data_processing}
+\cleardoublepage
+
+%% Auto-generated lists %%
+% Glossar
+\printunsrtglossary[type=abbreviations]
+\cleardoublepage
+
+% List of figures
+\addcontentsline{toc}{chapter}{\listfigurename}
+\listoffigures
+\cleardoublepage
+
+% List of tables
+\addcontentsline{toc}{chapter}{\listtablename}
+\listoftables
+\cleardoublepage
+
+% Literature list
+\selectlanguage{english}{\addcontentsline{toc}{chapter}{\bibname}}
+\printbibliography
+
+\end{document}

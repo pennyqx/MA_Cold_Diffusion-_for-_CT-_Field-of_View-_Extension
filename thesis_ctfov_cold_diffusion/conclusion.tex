@@ -1,0 +1,44 @@
+\chapter{Conclusion}
+\label{ch:conclusion}
+
+This thesis set out to investigate whether Cold Diffusion, a deterministic degradation-based generative framework, can be adapted to recover missing detector data in CT sinograms and thereby extend the effective field of view. The central question was not whether diffusion models perform well in general, but whether replacing stochastic noise with a structured masking operator that directly mirrors the physical truncation process leads to a more principled and effective approach for this specific task.
+
+\section{What the Results Tell Us}
+
+The baseline experiments at \(k_c = 320\) provide a concrete answer to the primary comparison question. Cold Diffusion achieves a reconstruction-domain PSNR of 38.51\,dB and SSIM of 0.819, compared to 35.23\,dB and 0.727 for the conditional DDPM baseline. The PSNR gap is 3.28\,dB in reconstruction space and 3.62\,dB in sinogram space, and the relative ordering holds on both CT-ORG (37.71\,dB) and LIDC-IDRI (39.30\,dB). The fact that the ranking is stable across two anatomically distinct datasets gives some confidence that the result is not an artifact of a particular body region.
+
+The comparison with WCE-only is also instructive. At this truncation severity, the classical water-cylinder extrapolation already reaches 39.00\,dB. Cold Diffusion at 38.51\,dB is close but does not yet surpass it. This result indicates that the iterative diffusion process provides meaningful recovery over the truncated baseline (27.97\,dB), and it clearly outperforms the noise-based DDPM, but at \(k_c = 320\) it does not yet demonstrate a quantitative advantage over the classical method. The single-step U-Net inpainting at 47.53\,dB is the strongest result in this comparison, which reflects the efficiency of direct one-pass supervision under a fixed truncation regime.
+
+The timestep ablation study adds a different dimension to the picture. When the diffusion chain is run with \(T = 150\) steps and truncation ratio 0.25, reconstruction PSNR rises to \(44.52 \pm 0.77\,\text{dB}\) with SSIM of \(0.936 \pm 0.010\), which is a substantial improvement over \(T = 50\) (\(37.75 \pm 1.06\,\text{dB}\), SSIM 0.862). The difference between the two timestep configurations is around 6.8\,dB in PSNR and is reproducible across four seeds. This shows that Cold Diffusion is sensitive to the depth of the reverse chain in a meaningful way: more diffusion steps allow the model to refine the recovered region more carefully, and the benefit is not marginal.
+
+There is a notable inconsistency in the timestep experiment: \(T = 50\) achieves lower sinogram-domain MAE and higher sinogram PSNR than \(T = 150\), while \(T = 150\) leads in reconstruction PSNR and ROI-SSIM. This mismatch between sinogram-domain accuracy and image-domain quality suggests that minimizing pixel-wise projection error is not the same as producing a reconstruction-ready sinogram. The higher-step model appears to learn a different regime, one that is somewhat less accurate in sinogram pixels but better structured for FBP reconstruction. This is a genuinely interesting observation, and it points to the importance of how the reconstruction step is treated as part of the evaluation pipeline.
+
+\section{Cold Diffusion for FOV Recovery: Capability and Potential}
+
+Taken together, the experimental results support the following assessment of Cold Diffusion as a tool for CT FOV extension and sinogram recovery.
+
+The approach is fundamentally sound in design. Reformulating truncation as a deterministic masking process means the forward degradation is identical to the physical acquisition missing-data pattern. At every training step, the model sees examples that correspond directly to real truncation scenarios at different severity levels. This is not a minor technical choice: it is the reason Cold Diffusion can outperform DDPM on this task, because DDPM applies Gaussian noise that has no structural relationship to the missing-detector geometry. The physical alignment between the forward process and the actual problem gives the model a coherent learning target.
+
+The iterative recovery mechanism also appears to contribute genuinely, at least within the tested configurations. The \(T = 150\) configuration in the timestep study surpasses WCE-only by a clear margin (44.52\,dB vs.\ 42.23\,dB; both evaluated at truncation ratio 0.25, the same condition shared by all methods in that study), which indicates that more reverse steps help the model complete the missing region with higher quality than simple extrapolation. This is the most direct evidence in this thesis that Cold Diffusion offers something beyond what classical methods can provide under comparable conditions.
+
+At the same time, the current results should not be overstated. The model was trained and evaluated under bilateral symmetric truncation, which is a controlled scenario. The comparison operates on a single fixed truncation severity per experiment, not across a range of \(k_c\) values simultaneously. The U-Net baseline remains stronger in the main comparison table, which means that iterative refinement does not yet translate into a practical advantage when a well-trained single-step network is available for the same setting.
+
+\section{Limitations}
+
+Several constraints limit the scope of these results. All experiments use synthetically generated truncation rather than real scanner data from genuinely truncated acquisitions. The training and evaluation scope is restricted to 2D slice-wise sinograms without any inter-slice consistency mechanism. The evaluation set is relatively small (four seeds of four cases each). These factors mean the current findings should be treated as evidence of methodological viability rather than clinical readiness.
+
+The sinogram-reconstruction mismatch in the timestep study also raises an open question about what the model is actually learning at different chain depths. More detailed analysis of the intermediate predictions across diffusion steps would help clarify the recovery mechanism and could potentially inform a better training objective than current L1 minimization in the projection domain.
+
+\section{Looking Forward}
+
+The most immediate and concrete next step is to evaluate Cold Diffusion across a range of truncation severities rather than at a single operating point. If the gap between Cold Diffusion and the classical baseline grows at higher truncation ratios, that would support the hypothesis that iterative refinement becomes more important as the inverse problem becomes more ill-posed. Conversely, if U-Net remains dominant across severities, the motivation for the additional inference cost requires a different justification.
+
+A second direction is to test on data where truncation is not perfectly bilateral or not of uniform width. Real scanner data often involves asymmetric truncation, partial body positioning, or geometry-dependent missing regions. These cases are where the structural advantage of matching the forward process to actual physics should matter most, and they represent the most meaningful test of whether the approach generalizes beyond the controlled training distribution.
+
+Finally, the mismatch between sinogram-domain accuracy and reconstruction-domain quality suggests that it may be worthwhile to incorporate a reconstruction-aware loss component during training: a term that penalizes artifacts in the FBP output rather than pixel error in sinogram space alone.
+
+\section{Closing Remarks}
+
+This work started from a simple observation: if the degradation in Cold Diffusion is made to match the actual physics of CT truncation, the model should have an easier time learning to invert it. The experimental results confirm that this alignment matters. Cold Diffusion outperforms DDPM, shows meaningful improvement with more reverse steps, produces visually coherent sinogram completions, and generalizes in ranking across two datasets. At the same time, it does not yet outperform single-step U-Net inpainting in the tested configuration, which is an important limitation that motivates further work.
+
+What this thesis contributes is a principled starting point for sinogram-domain FOV recovery using physics-aligned diffusion. The gap between where these results stand and where they would need to be for clinical use is real and known. Closing that gap requires more data, broader evaluation, and likely several design iterations. But the core idea, that deterministic degradation operators matching the physical acquisition process provide a more coherent framework than generic noise for CT inverse problems, is supported by the evidence collected here, and is worth continuing to develop.

@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+data/processed/
+slurm/zlog/
+
+# Local archives
+history/
+end_result_log/
+chatlog/
+.venv/
+slurm/v2_logs/
+# Local eval outputs
+k320_0/
+k320_3_6/

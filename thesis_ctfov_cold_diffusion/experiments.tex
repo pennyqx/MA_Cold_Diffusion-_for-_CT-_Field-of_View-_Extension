@@ -1,0 +1,48 @@
+\chapter{Experiments}
+\label{ch:experiments}
+
+This chapter describes the experimental setup and evaluation protocols used to validate the proposed Cold Diffusion approach for \gls{ct} field-of-view extension.
+
+\section{Experimental Overview}
+
+The experiments are organized into two parts. The baseline comparison includes Truncated input, WCE-only extrapolation, U-Net inpainting, Cold Diffusion, and conditional DDPM under matched data and evaluation conditions. In this baseline setting, training, validation, and testing are all performed with truncation ratio 0.50.
+For reproducible control of detector support, the executed experiments use \(k_c\) (keep\_center) as the primary truncation-control parameter in model configuration and reporting. A ratio-based definition is equally valid and can be converted directly through \(k_c=(1-\rho)N_t\) when \(\rho\) denotes total removed detector fraction.
+
+A separate timestep study is conducted only for Cold Diffusion. This study trains paired configurations with \(T=50\) and \(T=150\) at truncation ratio 0.75, and evaluates both models on test data with truncation ratio 0.25. This design isolates timestep effects under a fixed evaluation condition.
+The train-test truncation mismatch in this study is intentional. Cold Diffusion is trained with timestep-conditioned deterministic masks, and random timestep sampling exposes the network to a progression of degradation states within each training run. Setting a more severe training truncation encourages learning of difficult boundary completion patterns, while testing at a milder truncation evaluates whether the learned reverse dynamics remain stable and useful when less information is missing. In this sense, the configuration is used as a robustness-oriented design for timestep analysis rather than as a direct baseline replacement protocol.
+
+\section{Baseline Comparisons}
+
+\subsection{Design Rationale for Baselines}
+
+The baseline suite is designed to probe three modeling assumptions rather than to exhaustively cover all reconstruction methods. First, a diffusion model with deterministic degradation (Cold Diffusion) is compared against a diffusion model with stochastic degradation (conditional DDPM with truncated-sinogram and mask conditioning). Second, a single-step U-Net inpainting model is included to test whether iterative refinement across timesteps provides measurable benefit over direct prediction with comparable capacity. Third, all baselines are evaluated at the same test truncation condition to ensure that observed differences are attributable to model design rather than task severity.
+
+\subsection{Executed Baseline Evaluation Chain}
+
+Baseline evaluation is executed through a unified evaluation pipeline. The default seed set is \{42, 52, 62, 72\}. Each seed run records sinogram-domain and reconstruction-domain metrics together with qualitative grids. Baseline training uses a fixed budget of 100,000 optimization steps.
+In this chain, baseline training, validation, and testing are configured with truncation ratio 0.50.
+
+\subsection{Executed Timestep Training and Evaluation Path}
+
+The timestep study uses two matched Cold Diffusion configurations, \(T=50\) and \(T=150\). The two runs share the same data split, preprocessing chain, checkpoint interval, and evaluation pipeline. Each timestep configuration is trained with a fixed budget of 150,000 optimization steps. Aggregation is performed with the same seed-level procedure as in the baseline chain so that timestep comparisons remain directly traceable.
+For this study, timestep-model training is configured at truncation ratio 0.75, and evaluation is performed at truncation ratio 0.25.
+
+\section{Evaluation Datasets}
+
+\subsection{Dataset Sources and Split Strategy}
+
+Experiments are conducted on two public datasets with complementary anatomical coverage: CT-ORG and LIDC-IDRI. CT-ORG mainly contributes abdominal scans, while LIDC-IDRI contributes thoracic scans. Splitting is performed at the patient level before slice extraction, and the same split files are reused across all reported experiments.
+
+Data processing follows a unified preprocessing implementation. The volume standardization uses target shape \((128,512,512)\), target spacing \((1.5,1.0,1.0)\), HU clipping range \([-1000,1000]\), valid slice-thickness range \([0.5,3.0]\) mm, and minimum valid slices of 64. Forward projection uses detector width 640, detector height 560, detector spacing \((0.5,0.5)\), 360 projection angles over \(2\pi\), source-detector distance 1200.0, and source-isocenter distance 750.0. The saved 2D sinogram slicing stride is 4 detector rows. Split ratios are \(0.70/0.15/0.15\) for train/validation/test with a fixed random seed and source-balanced split construction. Normalization statistics are computed on the training split and reused consistently in validation and testing.
+
+\subsection{Test Set Composition}
+
+The test set consists of 15 patients from CT-ORG and 123 patients from LIDC-IDRI, totaling 19,320 2D sinogram slices in the current split files.
+
+\section{Model Selection and Checkpointing}
+
+Model selection follows a fixed-step checkpoint schedule that is applied consistently across compared methods. The selected checkpoints are taken from predefined training milestones under the same schedule rules, so checkpoint choice remains reproducible and comparable across baseline and timestep runs.
+
+\section{Summary}
+
+This chapter specified the executed baseline and timestep protocols, the data processing configuration, and the dataset split strategy used for all reported results.

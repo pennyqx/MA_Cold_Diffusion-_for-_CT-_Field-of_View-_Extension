@@ -1,0 +1,212 @@
+\chapter{Discussion}
+\label{ch:discussion}
+
+This chapter discusses this study as an initial attempt to apply Cold Diffusion in the \gls{ct} projection domain for field-of-view extension. The focus is on what the current experiments support, where the method is still uncertain, and what should be validated next.
+
+\section{Methodological Considerations}
+
+\subsection{Physical Alignment and Task-Specific Design}
+
+Aligning the forward degradation with the physical truncation mechanism is the core design choice of this work. In practice, this choice makes the pipeline easier to interpret, because each timestep corresponds to a concrete masking level. It also provides a stable training signal compared with stochastic noising in DDPM-style setups. These are practical observations from our implementation rather than universal claims, but they are useful for projection-domain experimentation.
+
+\subsection{Iterative Refinement Paradigm}
+
+The multi-step reverse process is motivated by the idea of gradual completion instead of one-shot prediction. In this study, timestep results show that the number of reverse steps can materially affect reconstruction quality, which supports this design direction. At the same time, the added steps increase inference cost, so the method should be viewed as a quality-speed tradeoff rather than a universally better replacement for single-step models.
+
+\subsection{Sinogram-Domain Processing}
+
+Operating in the projection domain rather than on reconstructed images offers several advantages:
+
+\paragraph{Linearity Preservation}
+The Radon transform is linear; adding information in sinogram space translates predictably to image space. Directly editing reconstructed images must implicitly satisfy Radon transform consistency, which is more complex.
+
+\paragraph{Artifact Avoidance}
+Truncation artifacts in \gls{fbp} reconstructions (cupping, streaks) are nonlinear effects of incomplete data. Training on reconstructed images would require the model to learn these complex artifact patterns, whereas sinogram-domain training addresses the root cause directly.
+
+\paragraph{Computational Efficiency}
+Although training requires forward projection to generate data, inference operates entirely in the projection domain. Post-processing workflows only need a single \gls{fbp} reconstruction of the corrected sinogram, avoiding iterative reconstruction loops.
+
+\section{Comparison with Existing Methods}
+
+\subsection{Positioning Relative to Classical Methods}
+
+Compared to classical truncation correction methods (water cylinder extrapolation, polynomial fitting, symmetric extension), this projection-domain Cold Diffusion attempt is motivated by three potential advantages:
+
+\begin{enumerate}
+    \item \textbf{Data-driven generalization}: Learns complex anatomical patterns from diverse training examples rather than relying on restrictive assumptions about tissue homogeneity or geometric symmetry
+    \item \textbf{Adaptive inference}: Adjusts predictions based on observed anatomy without requiring manual parameter tuning for different body regions or patient demographics
+    \item \textbf{Nonlinear modeling capability}: Neural networks can represent complex, nonlinear relationships between observed and missing data that polynomial models cannot capture
+\end{enumerate}
+
+Classical methods, however, retain certain practical advantages:
+\begin{itemize}
+    \item \textbf{Simplicity and interpretability}: Mathematical formulations are transparent and behavior is predictable
+    \item \textbf{Zero-shot application}: No training data or lengthy optimization required
+    \item \textbf{Instant inference}: Computational cost is negligible compared to neural network inference
+    \item \textbf{Robust failure modes}: When assumptions are violated, degradation is gradual rather than catastrophic
+\end{itemize}
+
+The experimental design includes classical baselines to quantify these trade-offs under the same protocol.
+
+\subsection{Relationship to Deep Learning Alternatives}
+
+\paragraph{Single-Step U-Net Inpainting}
+U-Net-based inpainting is the strongest baseline in our current setting. This result is important for balanced interpretation: in this experiment, a well-trained single-step model outperforms both diffusion baselines at \(k_c=320\). For this reason, the present work should be read as a feasibility study of Cold Diffusion in projection space, not as a claim of state-of-the-art performance.
+
+\paragraph{Conditional DDPM with Gaussian Noise}
+Comparing Cold Diffusion to conditional DDPM isolates the effect of degradation-operator choice. In our runs, Cold Diffusion is consistently better than DDPM in both sinogram and reconstruction metrics, and qualitative outputs show fewer unstable textures near truncated boundaries. This result does not prove that deterministic masking is always superior, but it gives concrete evidence that the choice is reasonable for the current CT projection-domain setup.
+
+\subsection{Comparison to Model-Based Iterative Reconstruction}
+
+Model-based methods that explicitly enforce data consistency through iterative optimization represent an alternative paradigm:
+
+\paragraph{Advantages of Model-Based Approaches}
+Model-based iterative reconstruction methods offer several compelling advantages. They provide physical guarantees through explicit enforcement of data consistency constraints, ensuring exact satisfaction of measured projection data within the \gls{fov}. Mathematical interpretability is inherent, with clear optimization objectives and provable convergence properties under appropriate conditions. These methods can be applied to any scan in a training-free manner, eliminating the need for large-scale dataset collection and lengthy pretraining. Some formulations further provide uncertainty quantification through posterior distributions or confidence intervals, which is valuable for clinical decision-making.
+
+\paragraph{Limitations Motivating Learning-Based Approaches}
+Despite these advantages, several limitations motivate the exploration of learning-based alternatives. Computational expense is substantial, as iterative optimization often requires minutes per reconstruction, limiting clinical throughput in high-volume imaging centers. Regularization parameter tuning presents ongoing challenges, with the optimal balance between smoothness and data fidelity varying across anatomical regions and image quality requirements. Non-convex formulations may converge to local optima depending on initialization, yielding inconsistent results. Perhaps most fundamentally, handcrafted priors such as total variation or wavelet sparsity may not capture complex anatomical structures as effectively as learned representations that can adapt to diverse tissue patterns.
+
+Hybrid approaches that combine learned priors with explicit data consistency represent a promising future direction, potentially offering the interpretability and physical guarantees of model-based methods alongside the representational power of deep learning.
+
+\section{Generalization and Robustness Analysis}
+
+\subsection{Cross-Anatomical Generalization}
+
+The experimental design deliberately includes two datasets with distinct anatomical coverage:
+
+\paragraph{CT-ORG (Abdominal)}
+Abdominal CT presents challenges including:
+\begin{itemize}
+    \item High soft-tissue contrast with multiple organs of varying density
+    \item Presence of gas pockets (bowel) creating sharp intensity transitions
+    \item Variable patient body habitus affecting truncation severity
+\end{itemize}
+
+\paragraph{LIDC-IDRI (Thoracic)}
+Thoracic CT differs in:
+\begin{itemize}
+    \item Large low-density regions (lung parenchyma)
+    \item High-contrast interfaces (mediastinum, ribs, cardiac structures)
+    \item Respiratory motion considerations (though handled by selecting specific phases)
+\end{itemize}
+
+Joint training on both anatomical regions provides a preliminary check of cross-region behavior. The consistent ranking across CT-ORG and LIDC-IDRI is encouraging, but it should be interpreted as early evidence rather than strong proof of broad generalization.
+
+\subsection{Robustness to Protocol Variations}
+
+The following imaging parameters may affect generalization.
+
+\paragraph{Projection Angle Count} 
+All training and evaluation use 360 equally-spaced projections. Performance with different angular sampling (e.g., 180 or 720 projections) remains an open question. Fewer angles would change the sinogram aspect ratio and spatial frequency content, potentially requiring architecture adaptation or retraining.
+
+\paragraph{Detector Geometry}
+Models are trained on 640-detector-element sinograms. Generalization to different detector widths (e.g., 512 or 1024 elements) would likely require:
+\begin{itemize}
+    \item Resampling sinograms to the training resolution, or
+    \item Architecture modifications to handle arbitrary input dimensions, or
+    \item Retraining on target detector configurations
+\end{itemize}
+
+\paragraph{Intensity Distribution}
+Different anatomical regions exhibit characteristic attenuation patterns. The global normalization strategy computes statistics across the merged training split, which should provide reasonable coverage. However, extreme values (dense contrast agents, metal implants) not represented in training data may pose challenges.
+
+\subsection{Anticipated Limitations and Failure Modes}
+
+Certain conditions may challenge the method's current capabilities or violate its underlying assumptions.
+
+\paragraph{High-Density Objects}
+Metal implants or dense contrast agents create:
+\begin{itemize}
+    \item Photon starvation artifacts in projections
+    \item Beam hardening effects not modeled in the synthetic cone-beam forward projection
+    \item Atypical projection patterns outside training distribution
+\end{itemize}
+
+If metal artifacts are present in the untruncated regions, the model may propagate or amplify them when completing truncated areas.
+
+\paragraph{Severe Pathology}
+Large abnormalities such as massive tumors, pleural effusions, or severe fractures that significantly alter typical anatomy may pose challenges for the proposed approach. The training data predominantly contains normal anatomy or mild pathological variations, which means the model's learned prior may bias predictions toward typical anatomical structures. Furthermore, asymmetric anatomy resulting from severe pathology violates the implicit symmetry assumptions that the model may rely upon for completing truncated regions.
+
+\paragraph{Motion and Consistency}
+Patient motion during acquisition causes view-to-view inconsistencies in projections and violates the Radon transform consistency assumptions that underpin CT reconstruction. These inconsistencies create a fundamental challenge for sinogram inpainting, as the model may attempt to enforce mathematical consistency that does not exist in motion-corrupted data. This forced consistency could introduce artificial structures or hallucinate anatomical features in the completed regions, potentially misleading diagnostic interpretation.
+
+\paragraph{Boundary Regions}
+The transition between measured and inpainted sinogram regions represents a critical challenge for reconstruction quality. Visible boundaries in reconstructed images indicate discontinuities in predicted values at the mask edge or inconsistent spatial frequency content between the measured and generated regions. Such artifacts suggest the need for carefully designed reverse updates and dedicated post-processing techniques, though residual boundary effects may persist depending on the severity of truncation and anatomical complexity.
+
+\section{Computational Considerations}
+
+\subsection{Training Efficiency}
+
+Training throughput is constrained by GPU memory and model complexity. Validation cadence must be balanced against optimization progress to avoid unnecessary overhead. Larger datasets generally improve performance, but the precise sample-efficiency threshold has not been quantified in this work. Batch size is limited by memory; while larger batches may improve stability, that trade-off has not been explored systematically in the current experiments.
+
+\subsection{Inference Speed}
+
+Inference speed scales roughly with the number of diffusion timesteps, which makes the quality and latency tradeoff central to deployment. In this study, timestep behavior is examined through the executed \(T=50\) and \(T=150\) configurations under one unified pipeline. The analysis focuses on relative quality behavior across timestep settings.
+
+Further acceleration can be pursued through model distillation to reduce network size and computational cost, quantization such as INT8 precision for faster inference, and parallel processing of multiple slices on multi GPU systems to improve throughput.
+
+\subsection{Clinical Deployment Considerations}
+
+For clinical adoption, several factors must be addressed:
+
+\paragraph{Regulatory Approval} Any AI-based medical device requires extensive validation and regulatory clearance through agencies such as the FDA or European CE marking processes. This regulatory pathway includes demonstration of safety and efficacy on diverse patient populations, comprehensive failure mode analysis with risk mitigation strategies, and seamless integration with existing Picture Archiving and Communication Systems (PACS) and clinical workflow systems.
+
+\paragraph{Interpretability and Trust} Clinicians need to understand when the model is likely to succeed or fail, how to identify suspicious outputs that may require closer examination, and ideally should have access to uncertainty quantification metrics that are not currently provided by the deterministic framework. Building trust requires transparency about model limitations and failure modes.
+
+\paragraph{Data Privacy} Training on patient data requires compliance with privacy regulations such as HIPAA in the United States and GDPR in the European Union, implementation of rigorous de-identification protocols to protect patient identity, and secure data storage and transmission infrastructures that meet regulatory standards.
+
+\section{Limitations}
+
+\subsection{Methodological Limitations}
+
+Several methodological limitations constrain the scope and applicability of the proposed approach. First, training on individual 2D detector-row slices ignores 3D consistency between adjacent rows; full 3D cone-beam learning could better preserve volumetric continuity but is significantly more expensive. Second, synthetic truncation may not capture real-world acquisition irregularities such as asymmetric truncation or partial-angle effects. Third, although the forward model uses cone-beam projection, the learning objective is slice-wise and does not enforce full 3D consistency. Fourth, the deterministic framework provides point predictions without uncertainty quantification; probabilistic extensions would be valuable for clinical decision support.
+
+\subsection{Experimental Limitations}
+
+The experimental validation also faces important limitations. Most critically, there is no evaluation on real truncated clinical scans with ground truth obtained from larger field-of-view scanners, which would provide the most direct validation of clinical utility. The training datasets are largely sourced from publicly available collections and may not represent the full diversity of clinical populations. Additionally, evaluation is currently based on filtered backprojection reconstruction; performance under iterative reconstruction or vendor-specific pipelines remains unknown.
+
+\subsection{Practical Limitations}
+
+From a practical deployment perspective, the method requires substantial compute for both training and inference, which may not be readily available in all clinical settings. Training also relies on large datasets of high-quality CT scans with sufficient diversity to capture anatomical variations. Finally, performance depends on hyperparameter choices (e.g., learning rate and timestep budget), requiring careful tuning and validation before clinical translation.
+
+\section{Ethical Considerations}
+
+\subsection{Hallucination Risk}
+
+Generative models can create plausible but incorrect structures, which is particularly concerning in medical imaging contexts. The primary risks include false positives where the model generates artifacts that resemble pathology, false negatives where real pathological features are obscured or smoothed away, and incorrect quantification where Hounsfield unit values or anatomical measurements are biased by the generation process.
+
+Mitigation strategies should include always displaying both original truncated and recovered images side-by-side for comparison, marking recovered regions clearly in visualizations and reports, providing uncertainty estimates where possible to indicate prediction confidence, and validating against ground truth whenever available to detect systematic biases.
+
+\subsection{Bias and Fairness}
+
+Machine learning models can perpetuate or amplify biases present in training data, leading to underrepresentation of certain demographics, performance disparities across populations, and differential error rates for different body types or anatomical characteristics. Such biases could result in unequal treatment outcomes if the model performs better for patients similar to those well-represented in the training data.
+
+Fairness should be explicitly evaluated across multiple demographic and physical dimensions, including age groups, sex and gender identity, body mass index (BMI) ranges, and natural anatomical variations. Stratified evaluation across these subgroups is essential to ensure equitable performance before any clinical deployment.
+
+\subsection{Intended Use and Research Scope}
+
+This thesis presents a methodological contribution intended primarily for research purposes. The approach should be understood within appropriate scope:
+
+\begin{itemize}
+    \item \textbf{Research prototype status}: The implementation represents a proof-of-concept requiring extensive additional validation before any clinical consideration
+    \item \textbf{Synthetic evaluation framework}: Results are based on synthetically truncated data with known ground truth, which facilitates controlled evaluation but may not fully capture real-world complexity
+    \item \textbf{Regulatory requirements}: Any future clinical application would require regulatory approval through appropriate pathways (FDA premarket review, CE marking), including comprehensive safety and efficacy demonstrations
+    \item \textbf{Professional interpretation}: Even with perfect technical performance, AI-corrected images should be interpreted by qualified radiologists aware of the correction process and its limitations
+\end{itemize}
+
+\section{Summary and Reflection}
+
+This chapter discussed the current study as an exploratory projection-domain investigation of Cold Diffusion, with attention to both observed gains and clear limitations.
+
+The key insights include:
+
+\begin{itemize}
+    \item \textbf{Feasibility in projection space}: The method can be trained and evaluated stably in the CT sinogram domain under a controlled protocol.
+    \item \textbf{Meaningful but limited evidence}: Cold Diffusion improves over DDPM in this setup, while U-Net remains the strongest baseline at \(k_c=320\).
+    \item \textbf{Boundary of conclusions}: Current results are based on synthetic bilateral truncation and 2D slice-wise learning, so claims must remain conservative.
+    \item \textbf{Next validation target}: Real clinical truncation scenarios, stronger robustness tests, and deployment-oriented evaluation are still required.
+\end{itemize}
+
+From a research perspective, this thesis is a first step rather than an endpoint. More rigorous validation on diverse clinical data, clearer failure analysis, and stronger integration with clinical workflow are necessary before practical adoption can be discussed.
+
+The experimental framework described in Chapters~\ref{ch:experiments} and~\ref{ch:results} provides empirical evidence to support and refine these theoretical considerations. The methodological contributions, including problem formulation, architectural design, and experimental protocol design, stand as contributions to the medical imaging research community.

@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Logs
+/logs/
+*.log
+
+# Local environment
+.DS_Store
+.env
+.venv/
+venv/
+
+# Model outputs / data
+/results/
+/data/
+
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+*.ps
+*.pdf
+*-SAVE-ERROR

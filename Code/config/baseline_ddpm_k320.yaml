@@ -1,0 +1,24 @@
+# Fair baseline: DDPM (keep_center=320)
+
+experiment_name: baseline_ddpm_k320
+
+model:
+  type: ddpm
+  dim: 64
+  dim_mults: [1, 2, 4, 8]
+
+diffusion:
+  timesteps: 150
+  keep_center: 320
+  beta_schedule: cosine
+  loss_type: l1
+
+training:
+  total_steps: 100000
+  lr: 1.0e-4
+  val_interval: 5000
+  val_max_batches: 120
+  val_truncation_ratio: 0.25
+  save_interval: 10000
+
+results_dir: results/baselines/ddpm_k320

@@ -1,0 +1,26 @@
+# Fair baseline: Cold Diffusion (keep_center=320)
+
+experiment_name: baseline_cold_diffusion_k320
+
+model:
+  type: cold_diffusion
+  dim: 64
+  dim_mults: [1, 2, 4, 8]
+
+diffusion:
+  timesteps: 150
+  keep_center: 320
+  sampling_routine: x0_step_down
+  loss_type: l1
+
+training:
+  total_steps: 100000
+  lr: 1.0e-4
+  val_interval: 5000
+  val_max_batches: 120
+  val_truncation_ratio: 0.25
+  save_interval: 10000
+  early_stop_patience: 1000000
+  early_stop_delta: 0.0
+
+results_dir: results/baselines/cold_diffusion_k320

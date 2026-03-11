@@ -1,0 +1,24 @@
+# Experiment 3-C: Timesteps Study - T=150 (fast, no val)
+
+experiment_name: exp3_timesteps_150_fast
+
+model:
+  type: cold_diffusion
+  dim: 64
+  dim_mults: [1, 2, 4, 8]
+
+diffusion:
+  timesteps: 150
+  keep_center: 160
+  sampling_routine: x0_step_down
+  loss_type: l1
+
+training:
+  total_steps: 150000
+  lr: 1.0e-4
+  val_interval: 1000000000
+  val_max_batches: null
+  save_interval: 10000
+  keep_last_ckpt: 3
+
+results_dir: results/exp3_timesteps/t150

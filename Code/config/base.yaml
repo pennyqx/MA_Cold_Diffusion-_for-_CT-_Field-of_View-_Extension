@@ -1,6 +1,6 @@
 # Base config shared by baseline and timestep experiments
 
-experiment_name: base_fast
+experiment_name: base
 
 seed: 42
 
@@ -14,7 +14,7 @@ model:
 
 diffusion:
   timesteps: 100
-  keep_center: 11
+  keep_center: 320
   sampling_routine: x0_step_down
   loss_type: l1
   beta_schedule: cosine
@@ -34,7 +34,7 @@ training:
   lr_min: 5.0e-6
   lr_schedule: cosine
   warmup_steps: 2000
-  total_steps: 150000
+  total_steps: 100000
   val_interval: 1000000000
   val_max_batches: null
   val_truncation_ratio: 0.25
